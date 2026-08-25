@@ -1,0 +1,14 @@
+# Maven
+**/target/
+
+# Maven wrapper logs
+**/.mvn/timing.properties
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
