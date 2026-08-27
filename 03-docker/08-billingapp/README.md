@@ -1,182 +1,354 @@
-# BillingApp - Spring Boot + Docker
+# BillingApp - Docker Compose
 
 ## Objetivo
 
-Dockerizar una aplicación Spring Boot y ejecutarla dentro de un contenedor Docker.
+Ejecutar una aplicación Spring Boot dentro de un contenedor Docker utilizando Docker Compose.
+
+La aplicación se llama `devopslab` y tiene un endpoint que devuelve:
+
+`Hola desde DevOps Lab`
+
+---
 
 ## 1. Aplicación Spring Boot
 
-La aplicación está creada con Spring Boot y utiliza Java 21.
+La aplicación se encuentra en:
 
-La aplicación tiene un endpoint:
+app/devopslab/
 
-    GET /api/message
+Dentro tenemos el código de la aplicación, el `pom.xml` y el `Dockerfile`.
 
-Que devuelve:
+El endpoint creado es:
 
-    Hola desde DevOps Lab
+GET /api/message
 
-Para probar la aplicación directamente con Spring Boot:
+Y devuelve:
 
-    curl http://localhost:8080/api/message
+Hola desde DevOps Lab
 
-## 2. Generar el JAR
+---
 
-Antes de crear la imagen Docker necesitamos tener generado el archivo `.jar` de la aplicación.
+## 2. Crear el JAR
 
-El JAR generado es:
+Primero se compila la aplicación con Maven para generar el archivo `.jar`.
 
-    target/devopslab-0.0.1-SNAPSHOT.jar
+El archivo generado se encuentra en:
+
+target/devopslab-0.0.1-SNAPSHOT.jar
+
+Este archivo no se sube a Git porque `target/` está incluido en `.gitignore`.
+
+---
 
 ## 3. Dockerfile
 
 El Dockerfile utilizado es:
 
-    FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre
 
-    WORKDIR /app
+WORKDIR /app
 
-    COPY target/devopslab-0.0.1-SNAPSHOT.jar app.jar
+COPY target/devopslab-0.0.1-SNAPSHOT.jar app.jar
 
-    EXPOSE 8080
+EXPOSE 8080
 
-    ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
-### Explicación
+### Qué hace cada instrucción
 
-**FROM** → utilizamos una imagen con Java 21 para ejecutar la aplicación.
+**FROM**
 
-**WORKDIR** → establece `/app` como directorio de trabajo dentro del contenedor.
+Partimos de una imagen que contiene Java 21:
 
-**COPY** → copia el JAR generado dentro del contenedor y lo guarda como `app.jar`.
+eclipse-temurin:21-jre
 
-**EXPOSE** → indica que la aplicación utiliza el puerto 8080 dentro del contenedor.
+**WORKDIR**
 
-**ENTRYPOINT** → ejecuta la aplicación Java cuando se inicia el contenedor.
+Establece `/app` como directorio de trabajo dentro del contenedor.
 
-## 4. Construcción de la imagen
+**COPY**
 
-Desde la carpeta de la aplicación:
+Copia el `.jar` generado por Maven dentro del contenedor y lo guarda como:
 
-    cd ~/proyectos/devops-lab/app/devopslab
+/app/app.jar
 
-Creamos la imagen:
+**EXPOSE**
 
-    docker build -t devopslab:1.0 .
+Declara que la aplicación utiliza el puerto `8080` dentro del contenedor.
 
-El comando `docker build` crea una imagen a partir del Dockerfile.
+**ENTRYPOINT**
 
-La imagen creada se llama:
+Indica que al iniciar el contenedor se ejecutará:
 
-    devopslab:1.0
+java -jar app.jar
 
-## 5. Ejecución del contenedor
+---
 
-Ejecutamos la imagen:
+## 4. Crear la imagen Docker
 
-    docker run -d --name devopslab -p 8080:8080 devopslab:1.0
+Desde:
 
-### Explicación
+app/devopslab/
 
-**docker run** → crea y ejecuta un contenedor.
+ejecutamos:
 
-**-d** → ejecuta el contenedor en segundo plano.
+docker build -t devopslab:1.0 .
 
-**--name devopslab** → asigna el nombre `devopslab` al contenedor.
+Esto crea la imagen:
 
-**-p 8080:8080** → conecta el puerto 8080 del ordenador con el puerto 8080 del contenedor.
+devopslab:1.0
 
-**devopslab:1.0** → indica qué imagen utilizamos.
+La imagen contiene nuestra aplicación Spring Boot preparada para ejecutarse.
 
-## 6. Problema encontrado
+---
 
-Al intentar crear el contenedor apareció el siguiente error:
+## 5. Ejecutar la aplicación con Docker
 
-    Conflict. The container name "/devopslab" is already in use
+Antes de utilizar Docker Compose, probamos la imagen directamente con:
 
-Esto ocurría porque ya existía un contenedor antiguo llamado `devopslab`.
+docker run -d --name devopslab -p 8080:8080 devopslab:1.0
 
-Comprobamos los contenedores:
+Esto conecta:
 
-    docker ps -a --filter "name=devopslab"
+HOST 8080 → CONTENEDOR 8080
 
-El contenedor antiguo estaba detenido y utilizaba una imagen antigua.
+Y permite acceder a la aplicación desde:
 
-## 7. Solución
+http://localhost:8080
 
-Eliminamos el contenedor antiguo:
+El endpoint de la aplicación es:
 
-    docker rm devopslab
+http://localhost:8080/api/message
 
-Después creamos el nuevo contenedor utilizando la imagen actual:
+Comprobación:
 
-    docker run -d --name devopslab -p 8080:8080 devopslab:1.0
-
-## 8. Comprobación
-
-Comprobamos que el contenedor está funcionando:
-
-    docker ps
-
-El resultado mostró:
-
-    devopslab:1.0
-    0.0.0.0:8080->8080/tcp
-
-Después comprobamos la API:
-
-    curl http://localhost:8080/api/message
+curl http://localhost:8080/api/message
 
 Resultado:
 
-    Hola desde DevOps Lab
+Hola desde DevOps Lab
 
-Esto confirma que la aplicación Spring Boot está funcionando correctamente dentro de Docker.
+---
 
-## 9. Logs
+## 6. Docker Compose
 
-Para consultar los logs del contenedor:
+Creamos un archivo:
 
-    docker logs devopslab
+compose.yaml
 
-Los logs mostraron que Spring Boot se inició correctamente y que Tomcat estaba escuchando en el puerto 8080.
+con el siguiente contenido:
 
-También podemos seguir los logs en tiempo real:
+services:
+  devopslab:
+    image: devopslab:1.0
+    ports:
+      - "8080:8080"
 
-    docker logs -f devopslab
+Aquí no estamos creando una nueva imagen.
 
-Para salir de los logs:
+Estamos indicando a Docker Compose que utilice la imagen que ya hemos creado:
 
-    Ctrl + C
+devopslab:1.0
 
-## 10. Lo aprendido
+---
 
-- Una aplicación Spring Boot puede ejecutarse dentro de un contenedor Docker.
-- `docker build` crea una imagen.
-- `docker run` crea y ejecuta un contenedor a partir de una imagen.
-- `EXPOSE` indica el puerto utilizado dentro del contenedor.
-- `-p` conecta el puerto del ordenador con el puerto del contenedor.
-- Los contenedores tienen un nombre único.
-- Un contenedor detenido sigue existiendo y puede impedir reutilizar su nombre.
-- `docker logs` permite consultar lo que ocurre dentro del contenedor.
-- La aplicación puede comprobarse mediante una petición HTTP.
+## 7. Validar Docker Compose
 
-## 11. Comandos utilizados
+Antes de levantar el servicio podemos comprobar que la configuración es correcta:
 
-    docker build -t devopslab:1.0 .
+docker compose config
 
-    docker images
+Docker Compose interpreta:
 
-    docker run -d --name devopslab -p 8080:8080 devopslab:1.0
+image: devopslab:1.0
 
-    docker ps
+y:
 
-    docker ps -a --filter "name=devopslab"
+8080:8080
 
-    docker rm devopslab
+También crea automáticamente una red para el proyecto:
 
-    docker logs devopslab
+devopslab_default
 
-    docker logs -f devopslab
+---
 
-    curl http://localhost:8080/api/message
+## 8. Levantar la aplicación con Docker Compose
+
+Para levantar el servicio utilizamos:
+
+docker compose up -d
+
+Compose se encarga automáticamente de:
+
+- Crear la red.
+- Crear el contenedor.
+- Utilizar la imagen `devopslab:1.0`.
+- Configurar el puerto.
+- Arrancar la aplicación.
+
+Podemos comprobar el estado con:
+
+docker compose ps
+
+El contenedor creado tiene un nombre generado automáticamente por Compose:
+
+devopslab-devopslab-1
+
+El nombre sigue aproximadamente esta estructura:
+
+PROYECTO-SERVICIO-NÚMERO
+
+En nuestro caso:
+
+devopslab-devopslab-1
+     │        │       │
+     │        │       └── número de instancia
+     │        └────────── servicio
+     └─────────────────── proyecto
+
+---
+
+## 9. Comprobación
+
+Comprobamos que la aplicación funciona:
+
+curl http://localhost:8080/api/message
+
+Resultado:
+
+Hola desde DevOps Lab
+
+También podemos comprobar los logs:
+
+docker compose logs
+
+Los logs muestran que Spring Boot inicia Tomcat en el puerto `8080`.
+
+---
+
+## 10. Parar la aplicación
+
+Para detener y eliminar los recursos creados por Docker Compose:
+
+docker compose down
+
+Para volver a levantar la aplicación:
+
+docker compose up -d
+
+---
+
+## 11. Dockerfile vs Docker Compose
+
+Es importante diferenciar ambos archivos.
+
+### Dockerfile
+
+Define cómo construir la imagen:
+
+Dockerfile
+    ↓
+docker build
+    ↓
+devopslab:1.0
+
+### compose.yaml
+
+Define cómo ejecutar y configurar el servicio:
+
+compose.yaml
+    ↓
+docker compose up -d
+    ↓
+contenedor
+
+Por tanto:
+
+Dockerfile → construye la imagen
+
+Docker Compose → ejecuta y configura los contenedores
+
+---
+
+## 12. Lo aprendido
+
+- Una aplicación Spring Boot puede ejecutarse dentro de Docker.
+- Maven genera el archivo `.jar`.
+- El Dockerfile utiliza ese `.jar` para crear una imagen.
+- La imagen creada se llama `devopslab:1.0`.
+- Docker Compose puede utilizar una imagen que ya existe.
+- No es necesario escribir todos los parámetros de `docker run` cada vez.
+- `compose.yaml` guarda la configuración del servicio.
+- Docker Compose crea automáticamente una red para los servicios.
+- Docker Compose genera automáticamente el nombre del contenedor.
+- `docker compose up -d` crea y arranca los servicios.
+- `docker compose down` detiene y elimina los recursos creados por Compose.
+- El puerto `8080` del host se conecta con el puerto `8080` del contenedor.
+- La aplicación se puede comprobar mediante el endpoint `/api/message`.
+
+---
+
+## 13. Comandos utilizados
+
+# Comprobar la estructura del proyecto
+tree app/devopslab -L 3
+
+# Crear la imagen
+docker build -t devopslab:1.0 .
+
+# Ver las imágenes
+docker images
+
+# Ejecutar manualmente el contenedor
+docker run -d --name devopslab -p 8080:8080 devopslab:1.0
+
+# Comprobar contenedores
+docker ps
+
+# Probar la aplicación
+curl http://localhost:8080/api/message
+
+# Validar Docker Compose
+docker compose config
+
+# Levantar el servicio
+docker compose up -d
+
+# Comprobar el servicio
+docker compose ps
+
+# Ver los logs
+docker compose logs
+
+# Detener y eliminar los recursos de Compose
+docker compose down
+
+---
+
+## 14. Resumen
+
+El flujo completo realizado ha sido:
+
+Código Spring Boot
+        ↓
+      Maven
+        ↓
+      .jar
+        ↓
+   Dockerfile
+        ↓
+   docker build
+        ↓
+   devopslab:1.0
+        ↓
+   compose.yaml
+        ↓
+docker compose up -d
+        ↓
+    Contenedor
+        ↓
+ localhost:8080
+        ↓
+ /api/message
+        ↓
+Hola desde DevOps Lab
